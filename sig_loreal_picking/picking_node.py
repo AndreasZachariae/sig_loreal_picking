@@ -11,14 +11,11 @@ class PickingNode(Node):
 
     def __init__(self,
                  name: str = "picking_node",
-                 roi=None,
                  image_topic: str = "stereo/left/image_rect_color",
                  depth_image_topic: str = "stereo/depth",
                  result_topic: str = "picking_node/result_image"):
 
         super().__init__(name)
-
-        self.roi = roi
 
         self.image = None
         self.depth_image = None
@@ -81,10 +78,12 @@ def main(args=None):
     ################# Get Detections #########################
 
     # (Optional) Only search objects in this region of interest
-    roi = RegionOfInterest(x_offset=100,
-                           y_offset=100,
-                           height=100,
-                           width=100)
+    # roi = RegionOfInterest(x_offset=0,
+    #                        y_offset=0,
+    #                        height=1920,
+    #                        width=1080)
+
+    roi = RegionOfInterest()
 
     detections, result_image = node.detector_client.detect_objects(
         node.image, roi)
@@ -96,18 +95,17 @@ def main(args=None):
     object_pixels = []
 
     for detection in detections:
-        print(str(detection))
-
-        detection["class_id"]
-        detection["class_name"]
-        detection["probability"]
-        detection["bounding_box"]
+        print(
+            detection.class_id,
+            detection.class_name,
+            detection.probability,
+            detection.bounding_box)
 
         object_pixels.append(
-            detection["bounding_box"]["x_offset"] +
-            int(detection["bounding_box"]["width"] / 2),
-            detection["bounding_box"]["y_offset"] +
-            int(detection["bounding_box"]["height"] / 2))
+            (detection.bounding_box.x_offset +
+             int(detection.bounding_box.width / 2),
+             detection.bounding_box.y_offset +
+             int(detection.bounding_box.height / 2)))
 
     object_positions = []
 
@@ -116,16 +114,20 @@ def main(args=None):
         object_positions.append(
             node.transform_client.pixel_to_point(pixel, node.depth_image))
 
+    print(object_positions)
+
     ################# Move Robot to Coordinates #######################
 
-    # tf.transformations, for detections -> quaternion
+    for position in object_positions:
+        node.robot_client.move(
+            cartesian=[position.x, position.y, position.z, 90.0, 0.0, 0.0], lin=True)
 
-    node.robot_client.move(
-        cartesian=[0.0, 600.0, 800.0, 90.0, 0.0, 0.0], lin=False)
-    node.robot_client.move(
-        cartesian=[0.0, 400.0, 800.0, 90.0, 0.0, 0.0], lin=True)
-    node.robot_client.move(
-        cartesian=[0.0, 600.0, 800.0, 90.0, 0.0, 0.0], lin=True)
+    # node.robot_client.move(
+    #     cartesian=[0.0, 600.0, 800.0, 90.0, 0.0, 0.0], lin=False)
+    # node.robot_client.move(
+    #     cartesian=[0.0, 400.0, 800.0, 90.0, 0.0, 0.0], lin=True)
+    # node.robot_client.move(
+    #     cartesian=[0.0, 600.0, 800.0, 90.0, 0.0, 0.0], lin=True)
 
     # node.robot_client.move(cartesian=[114.0, 535.0, 365.0, 0.0, 0.0, 0.0], lin=False)
     # node.robot_client.move(cartesian=[93.0, 165.0, 365.0, 0.0, 0.0, 0.0], lin=True)
